@@ -1,7 +1,8 @@
 from microdot import Microdot, send_file, Request, websocket
 from microdot.websocket import with_websocket
 import asyncio
-
+from board import Board
+import json
 
 from main import wifiConnect
 wifiConnect()
@@ -14,14 +15,15 @@ async def index(request: Request):
 
 @app.route('/ws')
 @with_websocket
-async def ws(request, ws):
+async def ws(request, ws: websocket.WebSocket):
     while True:
         message = await ws.receive()
-        await ws.send(message)
+        board.updateMatrix()
+        await ws.send(json.dumps(board.stoneMatrix))
 
-def readPins():
-    pass
 
+board = Board()
+board.calibrate()
 
 
 # run server
