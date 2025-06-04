@@ -107,20 +107,12 @@
                 socket.onopen = () => {
                     connectionStatus.textContent = 'Connected';
                     connectionStatus.className = 'status connected';
-                    
-                    // Start sending "board" message every 0.5 seconds
-                    interval = setInterval(() => {
-                        if (socket.readyState === WebSocket.OPEN) {
-                            socket.send('board');
-                        }
-                    }, 500);
+                    // No need to periodically request the board anymore
                 };
                 
                 socket.onclose = () => {
                     connectionStatus.textContent = 'Disconnected. Attempting to reconnect...';
                     connectionStatus.className = 'status disconnected';
-                    
-                    clearInterval(interval);
                     
                     // Try to reconnect after a delay
                     setTimeout(connect, 2000);
@@ -133,11 +125,35 @@
                 socket.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
-                        updateBoard(data);
+                        
+                        // Handle messages based on their type
+                        if (data.type === 'fullBoard') {
+                            // Full board update with the entire matrix
+                            updateBoard(data.board);
+                        } 
+                        else if (data.type === 'stoneUpdate') {
+                            // Single stone update
+                            updateStone(data.row, data.col, data.stone);
+                        }
+                        else {
+                            console.warn('Received unknown message type:', data);
+                        }
                     } catch (e) {
                         console.error('Error parsing received data:', e);
                     }
                 };
+            }
+            
+            // Update a single stone on the board
+            function updateStone(row, col, value) {
+                const cell = board.querySelector(`td[data-row="${row}"][data-col="${col}"]`);
+                if (cell) {
+                    cell.textContent = value;
+                    cell.style.backgroundColor = value == 0 ? '#ffffff' : 
+                                              value == 1 ? '#000000' : 
+                                              value == 2 ? '#ffffff' : '#e0e0e0';
+                    cell.style.color = value == 1 ? '#ffffff' : '#000000';
+                }
             }
             
             // Initialize the board and connect to WebSocket

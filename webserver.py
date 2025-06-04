@@ -18,9 +18,13 @@ async def index(request: Request):
 @with_websocket
 async def ws(request, ws: websocket.WebSocket):
     websockets.add(ws)
+    await ws.send(json.dumps({
+        'type': 'fullBoard',
+        'board': board.stoneMatrix,
+    }))
     while True:
         message = await ws.receive()
-        await ws.send(json.dumps(board.stoneMatrix))
+        #await ws.send(json.dumps(board.stoneMatrix))
 
 
 board = Board()
@@ -33,7 +37,10 @@ def stoneUpdate(i, j, previous_stone, new_stone):
         if not ws.closed:
             try:
                 print(f'Sending update to websocket {ws}')
-                asyncio.create_task(ws.send(json.dumps({'row': i, 'col': j, 'stone': new_stone}))) 
+                asyncio.create_task(ws.send(json.dumps({
+                    'type': 'stoneUpdate',
+                    'row': i, 'col': j, 'stone': new_stone
+                }))) 
             except Exception as e:
                 print(f"Error sending update: {e}")
     
