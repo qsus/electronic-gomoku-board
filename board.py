@@ -1,4 +1,5 @@
 from machine import ADC, Pin
+import uasyncio as asyncio
 
 class Board:
 	numberMatrix = [[31800]*15 for _ in range(15)]
@@ -26,6 +27,12 @@ class Board:
 		self.M1 = Pin(5, Pin.OUT)
 		self.M2 = Pin(6, Pin.OUT)
 		self.M3 = Pin(7, Pin.OUT)
+		
+		# Flag to control monitoring loop
+		self.monitoring = False
+		
+		# Stone change observers
+		self.stoneObservers = []
 
 	def updateMatrix(self):
 		for i in range(15):
@@ -34,12 +41,22 @@ class Board:
 				self.setJ(j)
 				self.numberMatrix[i][j] = self.O.read_u16()
 				self.correctedNumberMatrix[i][j] = self.numberMatrix[i][j] - self.calibrationMatrix[i][j]
+
+				previousStone = self.stoneMatrix[i][j]
 				if self.correctedNumberMatrix[i][j] > self.BLACK_TRESHOLD:
 					self.stoneMatrix[i][j] = 'B'
 				elif self.correctedNumberMatrix[i][j] < -self.WHITE_TRESHOLD:
 					self.stoneMatrix[i][j] = 'W'
 				else:
 					self.stoneMatrix[i][j] = ' '
+				
+				if previousStone != self.stoneMatrix[i][j]:
+					# Notify observers about the stone change
+					for observer in self.stoneObservers:
+						observer(i, j, previousStone, self.stoneMatrix[i][j])
+
+	def updateDerivedMatrices(self):
+		pass
 
 	
 	def calibrate(self):
@@ -64,3 +81,25 @@ class Board:
 		self.M1.value(1 if (value & 2) else 0)
 		self.M2.value(1 if (value & 4) else 0)
 		self.M3.value(1 if (value & 8) else 0)
+
+	async def startMonitoring(self, interval_ms=100):
+		self.monitoring = True
+		while self.monitoring:
+			self.updateMatrix()
+			await asyncio.sleep_ms(interval_ms)
+	
+	def stopMonitoring(self):
+		self.monitoring = False
+	
+	def stoneUpdate(self, callback):
+		"""
+		Decorator to register a function as a stone change listener.
+		Example usage:
+		
+		@board.stone_change_listener
+		def on_stone_changed(row, col, old_stone, new_stone):
+			print(f"Stone at {row},{col} changed from {old_stone} to {new_stone}")
+		"""
+		if callback not in self.stoneObservers:
+			self.stoneObservers.append(callback)
+		return callback
