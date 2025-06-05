@@ -80,7 +80,7 @@
             const cellSize = 30; // Size between intersections
             
             // Initialize the board with 15x15 intersections
-            function initBoard() {
+            function init_board() {
                 board.innerHTML = '';
                 board.style.width = `${cellSize * 14}px`;
                 board.style.height = `${cellSize * 14}px`;
@@ -134,14 +134,14 @@
             }
             
             // Update the board with received data
-            function updateBoard(data) {
+            function update_board(data) {
                 if (!Array.isArray(data) || data.length !== 15) return;
                 
                 for (let i = 0; i < 15; i++) {
                     if (!Array.isArray(data[i]) || data[i].length !== 15) continue;
                     
                     for (let j = 0; j < 15; j++) {
-                        updateStone(i, j, data[i][j]);
+                        update_stone(i, j, data[i][j]);
                     }
                 }
             }
@@ -176,13 +176,13 @@
                         const data = JSON.parse(event.data);
                         
                         // Handle messages based on their type
-                        if (data.type === 'fullBoard') {
+                        if (data.type === 'full_board') {
                             // Full board update with the entire matrix
-                            updateBoard(data.board);
+                            update_board(data.board);
                         } 
-                        else if (data.type === 'stoneUpdate') {
+                        else if (data.type === 'stone_update') {
                             // Single stone update
-                            updateStone(data.row, data.col, data.stone);
+                            update_stone(data.row, data.col, data.stone);
                         }
                         else {
                             console.warn('Received unknown message type:', data);
@@ -194,7 +194,7 @@
             }
             
             // Update a single stone on the board
-            function updateStone(row, col, value) {
+            function update_stone(row, col, value) {
                 const stone = document.getElementById(`stone-${row}-${col}`);
                 if (stone) {
                     // Check the value to determine what to display
@@ -214,7 +214,7 @@
             }
             
             // Initialize the board and connect to WebSocket
-            initBoard();
+            init_board();
             connect();
         });
     </script>
