@@ -5,16 +5,33 @@ from lcd_i2c import I2cLcd
 from machine import I2C
 
 class Display:
+	DISPLAY_MODE_MENU = 0
+	DISPLAY_MODE_SPLASH = 1
+	DISPLAY_MODE_CLOCK = 2
+
 	menu = [
 		("Welcome to ECB!", lambda: print("Main menu selected")),
 	]
 	menu_index = 0
+	
+	display_mode = DISPLAY_MODE_MENU
 
-	#def add_menu_item(self, name, action):
-	#	"""Add a new item to the menu."""
-	#	self.menu.append((name, action))
+	def add_menu_item(self, label):
+		"""A decorator to add a menu item with the given label.
+
+		Usage example:
+
+		@display.add_menu_item("Item label")
+		def my_function():
+			# Function code here
+		"""
+		def decorator(func):
+			self.menu.append((label, func))
+			return func
+		return decorator
 
 	def show_splash(self, line1 = None, line2 = None):
+		self.display_mode = self.DISPLAY_MODE_SPLASH
 		if line1:
 			self.lcd.move_to(0, 0)
 			self.lcd.putstr(line1)
@@ -23,7 +40,6 @@ class Display:
 			self.lcd.move_to(0, 1)
 			self.lcd.putstr(line2)
 			self.lcd.putstr(" " * (16 - len(line2)))
-
 
 	def __init__(self):
 		self.button_left = Pin(LEFT_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
@@ -69,7 +85,13 @@ class Display:
 		self._print_menu()
 		
 	def _button_main(self):
-		self.menu[self.menu_index][1]()
+		if self.display_mode == self.DISPLAY_MODE_MENU: # Execute action
+			self.menu[self.menu_index][1]()
+		elif self.display_mode == self.DISPLAY_MODE_SPLASH: # Go back to menu
+			self.display_mode = self.DISPLAY_MODE_MENU
+			self._print_menu()
+		elif self.display_mode == self.DISPLAY_MODE_CLOCK: # TODO: Implement clock mode
+			pass
 
 	def _button_right(self):
 		self.menu_index += 1

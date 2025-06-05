@@ -10,18 +10,20 @@ class WifiConnection:
 			self.set_ap()
 
 	def set_client(self):
+		self.mode = 'client'
 		self.wifi = network.WLAN(network.STA_IF)
 		self.wifi.active(True)
 		self.wifi.config(pm=0) # disable power saving - it would introduce delays in seconds
 		self.wifi.connect(SSID, PASSWORD)
-		self.wifi.deinit()
 
 	def set_ap(self):
+		self.mode = 'access point'
 		self.wifi = network.WLAN(network.AP_IF)
 		self.wifi.active(True)
 		self.wifi.config(essid=AP_SSID, password=AP_PASSWORD, pm=0)
 
 	def disable(self):
+		self.mode = 'disabled'
 		self.wifi.disconnect()
 		self.wifi.deinit()
 
@@ -30,7 +32,5 @@ class WifiConnection:
 			return self.wifi.ifconfig()[0]
 		return None
 
-	def get_ap_credentials(self):
-		if self.wifi.IF_AP:
-			return self.wifi.config('essid'), self.wifi.config('password')
-		return None, None
+	def get_mode(self):
+		return self.mode
