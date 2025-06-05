@@ -9,12 +9,19 @@ from display import Display
 
 from lcd_i2c import I2cLcd
 from machine import Pin, I2C
-
+from wifi import WifiConnection
 
 board = Board()
 board.calibrate()
 
+wifi_connection = WifiConnection()
+
 display = Display()
+
+display.menu.append(("Set station mode", lambda: set_client_mode()))
+def set_client_mode():
+    wifi_connection.set_client()
+    display.show_splash("Connecting to:", SSID)
 
 server = Server(board)
 
@@ -27,7 +34,7 @@ def stone_update(i, j, previous_stone, new_stone):
 
 async def main():
     # Create tasks to run concurrently
-    server_task = asyncio.create_task(server.start(ssid=SSID, password=PASSWORD, port=80))
+    server_task = asyncio.create_task(server.start())
     board_task = asyncio.create_task(board.start_monitoring())
     
     # Wait for both tasks indefinitely

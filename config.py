@@ -25,3 +25,8 @@ RIGHT_BUTTON_PIN = 17
 # LCD Pins
 SCL = 19
 SDA = 18
+
+# Network settings
+HOSTNAME = 'ECB'
+PREFER_CLIENT = True
+PORT = 80

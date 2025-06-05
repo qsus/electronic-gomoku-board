@@ -6,12 +6,24 @@ from machine import I2C
 
 class Display:
 	menu = [
-		("Main", lambda: print("Main menu selected")),
-		("Set station mode", lambda: print("Set station mode selected")),
-		("Set client mode", lambda: print("Set access point mode selected")),
-		("Calibrate", lambda: print("Calibration selected")),
+		("Welcome to ECB!", lambda: print("Main menu selected")),
 	]
 	menu_index = 0
+
+	#def add_menu_item(self, name, action):
+	#	"""Add a new item to the menu."""
+	#	self.menu.append((name, action))
+
+	def show_splash(self, line1 = None, line2 = None):
+		if line1:
+			self.lcd.move_to(0, 0)
+			self.lcd.putstr(line1)
+			self.lcd.putstr(" " * (16 - len(line1)))
+		if line2:
+			self.lcd.move_to(0, 1)
+			self.lcd.putstr(line2)
+			self.lcd.putstr(" " * (16 - len(line2)))
+
 
 	def __init__(self):
 		self.button_left = Pin(LEFT_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
