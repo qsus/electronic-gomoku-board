@@ -16,13 +16,13 @@ class Server:
 		self.app.route('/ws')(with_websocket(self.wsHandler))
 		
 
-	def start(self, ssid=None, password=None, port=80):
+	async def start(self, ssid=None, password=None, port=80):
 		if ssid and password:
 			self.wifiConnectBlocking(ssid, password)
 			print(f"Connected to WiFi: {self.networkInfo}")
 		else:
 			print("No WiFi credentials provided, running possibly offline.")
-		asyncio.run(self.app.start_server(port=port))
+		await self.app.start_server(port=port)
 
 	async def indexHandler(self, request: Request):
 		return send_file('static/index.html', content_type='text/html')
