@@ -1,5 +1,6 @@
 from machine import ADC, Pin
 import uasyncio as asyncio
+from matrixTransformator import transformMatrix
 
 class Board:
 	# variable matrices
@@ -8,11 +9,14 @@ class Board:
 	# derived matrices
 	correctedNumberMatrix = [[0]*15 for _ in range(15)]
 	stoneMatrix = [[' ']*15 for _ in range(15)]
-	#rotatedStoneMatrix
-	#rotatedCorrectedNumberMatrix
+	rotatedStoneMatrix = [[' ']*15 for _ in range(15)]
+	rotatedCorrectedNumberMatrix = [[0]*15 for _ in range(15)]
 
 	BLACK_TRESHOLD = 600
 	WHITE_TRESHOLD = 600
+
+	ROTATION = 0
+	FLIP = True
 
 	
 
@@ -70,6 +74,11 @@ class Board:
 				if previousStone != self.stoneMatrix[i][j]:
 					for observer in self.stoneObservers:
 						observer(i, j, previousStone, self.stoneMatrix[i][j])
+
+		# Transform matrices
+		self.rotatedStoneMatrix = transformMatrix(self.stoneMatrix, rotation=self.ROTATION, flip=self.FLIP)
+		self.rotatedCorrectedNumberMatrix = transformMatrix(self.correctedNumberMatrix, rotation=self.ROTATION, flip=self.FLIP)
+
 		
 
 	
