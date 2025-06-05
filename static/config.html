@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electronic Gomoku Board - Config</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        #board {
+            display: inline-block;
+            margin: 20px auto;
+            position: relative;
+            background-color: #e0bb7a;
+            padding: 20px;
+        }
+        .intersection {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            margin: -5px 0 0 -5px;
+        }
+        .stone {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            margin: -13px 0 0 -13px;
+            text-align: center;
+            line-height: 26px;
+            font-size: 0px;
+        }
+        .black-stone {
+            background-color: #000;
+            color: white;
+        }
+        .white-stone {
+            background-color: #fff;
+            border: 1px solid #000;
+            color: black;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .editor-container {
+            margin-top: 20px;
+            text-align: left;
+        }
+        #settings-editor {
+            width: 100%;
+            height: 400px;
+            font-family: monospace;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        .btn-danger {
+            background-color: #f44336;
+        }
+        .btn-danger:hover {
+            background-color: #d32f2f;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>Electronic Gomoku Board - Config</h1>
+    
+    <div class="editor-container">
+        <h2>Edit Settings</h2>
+        <div id="status-message"></div>
+        <textarea id="settings-editor" spellcheck="false"></textarea>
+        <div class="button-container">
+            <button id="load-btn" class="btn">Load Settings</button>
+            <button id="save-btn" class="btn btn-danger">Save Settings</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const settingsEditor = document.getElementById('settings-editor');
+            const loadBtn = document.getElementById('load-btn');
+            const saveBtn = document.getElementById('save-btn');
+            const statusMessage = document.getElementById('status-message');
+
+            // Function to show status messages
+            function showMessage(message, isError = false) {
+                statusMessage.textContent = message;
+                statusMessage.className = 'message ' + (isError ? 'error' : 'success');
+                setTimeout(() => {
+                    statusMessage.textContent = '';
+                    statusMessage.className = '';
+                }, 5000);
+            }
+
+            // Load settings from the server
+            function loadSettings() {
+                fetch('/config.py')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to load settings');
+                        }
+                        return response.text();
+                    })
+                    .then(data => {
+                        settingsEditor.value = data;
+                        showMessage('Settings loaded successfully');
+                    })
+                    .catch(error => {
+                        console.error('Error loading settings:', error);
+                        showMessage('Error loading settings: ' + error.message, true);
+                    });
+            }
+
+            // Save settings to the server
+            function saveSettings() {
+                const settings = settingsEditor.value;
+                fetch('/config.py', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    },
+                    body: settings
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to save settings');
+                    }
+                    return response.text();
+                })
+                .then(data => {
+                    showMessage('Settings saved successfully');
+                })
+                .catch(error => {
+                    console.error('Error saving settings:', error);
+                    showMessage('Error saving settings: ' + error.message, true);
+                });
+            }
+
+            // Add event listeners
+            loadBtn.addEventListener('click', loadSettings);
+            saveBtn.addEventListener('click', saveSettings);
+
+            // Load settings when page loads
+            loadSettings();
+        });
+    </script>
+</body>
+</html>

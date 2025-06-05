@@ -49,6 +49,3 @@ class App:
         # Wait for both tasks indefinitely
         await asyncio.gather(server_task, board_task)
 
-if __name__ == "__main__":
-    app = App()
-    asyncio.run(app.main())
