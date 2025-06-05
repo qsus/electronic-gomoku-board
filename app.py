@@ -6,6 +6,15 @@ import json
 from server import Server
 from secret import SSID, PASSWORD
 
+from lcd.i2c_lcd import Display
+from machine import Pin, I2C
+
+i2c = I2C(1, scl=Pin(19), sda=Pin(18), freq=100000)
+print("I2C dvices:", i2c.scan())  # Vypíše seznam adres nalezených zařízení
+lcd = Display(i2c)
+lcd.clear()
+lcd.write("Go Game Server")
+
 board = Board()
 board.calibrate()
 
