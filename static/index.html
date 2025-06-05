@@ -17,15 +17,35 @@
         }
         #board {
             display: inline-block;
-            border-collapse: collapse;
             margin: 20px auto;
+            position: relative;
+            background-color: #e0bb7a;
+            padding: 20px;
         }
-        #board td {
-            width: 30px;
-            height: 30px;
-            border: 1px solid #000;
+        .intersection {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            margin: -5px 0 0 -5px;
+        }
+        .stone {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            margin: -13px 0 0 -13px;
             text-align: center;
-            font-size: 12px;
+            line-height: 26px;
+            font-size: 0px;
+        }
+        .black-stone {
+            background-color: #000;
+            color: white;
+        }
+        .white-stone {
+            background-color: #fff;
+            border: 1px solid #000;
+            color: black;
         }
         .status {
             margin: 10px 0;
@@ -48,7 +68,7 @@
     <div id="connection-status" class="status disconnected">Disconnected</div>
     
     <div id="board-container">
-        <table id="board"></table>
+        <div id="board"></div>
     </div>
     
     <script>
@@ -57,20 +77,59 @@
             const connectionStatus = document.getElementById('connection-status');
             let socket;
             let interval;
+            const cellSize = 30; // Size between intersections
             
-            // Initialize the board table with 15x15 cells
+            // Initialize the board with 15x15 intersections
             function initBoard() {
                 board.innerHTML = '';
+                board.style.width = `${cellSize * 14}px`;
+                board.style.height = `${cellSize * 14}px`;
+                
+                // Draw horizontal lines
                 for (let i = 0; i < 15; i++) {
-                    const row = document.createElement('tr');
+                    const hLine = document.createElement('div');
+                    hLine.style.position = 'absolute';
+                    hLine.style.left = '0';
+                    hLine.style.top = `${i * cellSize}px`;
+                    hLine.style.width = '100%';
+                    hLine.style.height = '1px';
+                    hLine.style.backgroundColor = '#000';
+                    board.appendChild(hLine);
+                }
+                
+                // Draw vertical lines
+                for (let i = 0; i < 15; i++) {
+                    const vLine = document.createElement('div');
+                    vLine.style.position = 'absolute';
+                    vLine.style.top = '0';
+                    vLine.style.left = `${i * cellSize}px`;
+                    vLine.style.height = '100%';
+                    vLine.style.width = '1px';
+                    vLine.style.backgroundColor = '#000';
+                    board.appendChild(vLine);
+                }
+                
+                // Add intersections (dots where lines meet)
+                for (let i = 0; i < 15; i++) {
                     for (let j = 0; j < 15; j++) {
-                        const cell = document.createElement('td');
-                        cell.dataset.row = i;
-                        cell.dataset.col = j;
-                        cell.textContent = '0';
-                        row.appendChild(cell);
+                        const intersection = document.createElement('div');
+                        intersection.className = 'intersection';
+                        intersection.dataset.row = i;
+                        intersection.dataset.col = j;
+                        intersection.style.left = `${j * cellSize}px`;
+                        intersection.style.top = `${i * cellSize}px`;
+                        
+                        // Create stone element (initially hidden)
+                        const stone = document.createElement('div');
+                        stone.className = 'stone';
+                        stone.id = `stone-${i}-${j}`;
+                        stone.style.left = `${j * cellSize}px`;
+                        stone.style.top = `${i * cellSize}px`;
+                        stone.style.display = 'none';
+                        
+                        board.appendChild(intersection);
+                        board.appendChild(stone);
                     }
-                    board.appendChild(row);
                 }
             }
             
@@ -82,17 +141,7 @@
                     if (!Array.isArray(data[i]) || data[i].length !== 15) continue;
                     
                     for (let j = 0; j < 15; j++) {
-                        const cell = board.querySelector(`td[data-row="${i}"][data-col="${j}"]`);
-                        if (cell) {
-                            cell.textContent = data[i][j];
-                            
-                            // Optional: Add visual indicator based on value
-                            cell.style.backgroundColor = data[i][j] == 0 ? '#ffffff' : 
-                                                        data[i][j] == 1 ? '#000000' : 
-                                                        data[i][j] == 2 ? '#ffffff' : '#e0e0e0';
-                            
-                            cell.style.color = data[i][j] == 1 ? '#ffffff' : '#000000';
-                        }
+                        updateStone(i, j, data[i][j]);
                     }
                 }
             }
@@ -146,13 +195,21 @@
             
             // Update a single stone on the board
             function updateStone(row, col, value) {
-                const cell = board.querySelector(`td[data-row="${row}"][data-col="${col}"]`);
-                if (cell) {
-                    cell.textContent = value;
-                    cell.style.backgroundColor = value == 0 ? '#ffffff' : 
-                                              value == 1 ? '#000000' : 
-                                              value == 2 ? '#ffffff' : '#e0e0e0';
-                    cell.style.color = value == 1 ? '#ffffff' : '#000000';
+                const stone = document.getElementById(`stone-${row}-${col}`);
+                if (stone) {
+                    // Check the value to determine what to display
+                    if (value === 'B' || value === 1) {
+                        stone.className = 'stone black-stone';
+                        stone.textContent = 'B';
+                        stone.style.display = 'block';
+                    } else if (value === 'W' || value === 2) {
+                        stone.className = 'stone white-stone';
+                        stone.textContent = 'W';
+                        stone.style.display = 'block';
+                    } else {
+                        // Empty intersection
+                        stone.style.display = 'none';
+                    }
                 }
             }
             
