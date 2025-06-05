@@ -1,6 +1,7 @@
 from machine import ADC, Pin
 import uasyncio as asyncio
 from matrix_transformator import transform_matrix
+from config import O, E, S0, S1, S2, S3, M0, M1, M2, M3, BLACK_THRESHOLD, WHITE_THRESHOLD, ROTATION, FLIP
 
 class Board:
 	# variable matrices
@@ -12,29 +13,21 @@ class Board:
 	rotated_stone_matrix = [[' ']*15 for _ in range(15)]
 	rotated_corrected_number_matrix = [[0]*15 for _ in range(15)]
 
-	BLACK_TRESHOLD = 600
-	WHITE_TRESHOLD = 600
-
-	ROTATION = 0
-	FLIP = True
-
-	
-
 	def __init__(self):
-		self.O = ADC(Pin(26)) # output pin
-		self.E = None # enable pin, not used
+		self.O = ADC(Pin(O)) # output pin
+		self.E = E # enable pin, not used
 		
 		# Individual mux control pins (S0-S3)
-		self.S0 = Pin(10, Pin.OUT)
-		self.S1 = Pin(11, Pin.OUT)
-		self.S2 = Pin(12, Pin.OUT)
-		self.S3 = Pin(13, Pin.OUT)
+		self.S0 = Pin(S0, Pin.OUT)
+		self.S1 = Pin(S1, Pin.OUT)
+		self.S2 = Pin(S2, Pin.OUT)
+		self.S3 = Pin(S3, Pin.OUT)
 		
 		# Main mux control pins (M0-M3)
-		self.M0 = Pin(4, Pin.OUT)
-		self.M1 = Pin(5, Pin.OUT)
-		self.M2 = Pin(6, Pin.OUT)
-		self.M3 = Pin(7, Pin.OUT)
+		self.M0 = Pin(M0, Pin.OUT)
+		self.M1 = Pin(M1, Pin.OUT)
+		self.M2 = Pin(M2, Pin.OUT)
+		self.M3 = Pin(M3, Pin.OUT)
 		
 		# Flag to control monitoring loop
 		self.monitoring = False
@@ -63,9 +56,9 @@ class Board:
 
 				# Calculate the stone type based on corrected values
 				previous_stone = self.stone_matrix[i][j]
-				if self.corrected_number_matrix[i][j] > self.BLACK_TRESHOLD:
+				if self.corrected_number_matrix[i][j] > BLACK_THRESHOLD:
 					self.stone_matrix[i][j] = 'B'
-				elif self.corrected_number_matrix[i][j] < -self.WHITE_TRESHOLD:
+				elif self.corrected_number_matrix[i][j] < -WHITE_THRESHOLD:
 					self.stone_matrix[i][j] = 'W'
 				else:
 					self.stone_matrix[i][j] = ' '
@@ -76,8 +69,8 @@ class Board:
 						observer(i, j, previous_stone, self.stone_matrix[i][j])
 
 		# Transform matrices
-		self.rotated_stone_matrix = transform_matrix(self.stone_matrix, rotation=self.ROTATION, flip=self.FLIP)
-		self.rotated_corrected_number_matrix = transform_matrix(self.corrected_number_matrix, rotation=self.ROTATION, flip=self.FLIP)
+		self.rotated_stone_matrix = transform_matrix(self.stone_matrix, rotation=ROTATION, flip=FLIP)
+		self.rotated_corrected_number_matrix = transform_matrix(self.corrected_number_matrix, rotation=ROTATION, flip=FLIP)
 
 		
 
