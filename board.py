@@ -2,10 +2,14 @@ from machine import ADC, Pin
 import uasyncio as asyncio
 
 class Board:
+	# variable matrices
 	numberMatrix = [[31800]*15 for _ in range(15)]
 	calibrationMatrix = [[31800]*15 for _ in range(15)]
+	# derived matrices
 	correctedNumberMatrix = [[0]*15 for _ in range(15)]
 	stoneMatrix = [[' ']*15 for _ in range(15)]
+	#rotatedStoneMatrix
+	#rotatedCorrectedNumberMatrix
 
 	BLACK_TRESHOLD = 600
 	WHITE_TRESHOLD = 600
@@ -35,13 +39,25 @@ class Board:
 		self.stoneObservers = []
 
 	def updateMatrix(self):
+		"""Read the current values from the board and update the numberMatrix.
+		This takes about 24ms for the reading and in total 70ms including the update of derived matrices.
+		"""
 		for i in range(15):
 			self.setI(i)
 			for j in range(15):
 				self.setJ(j)
 				self.numberMatrix[i][j] = self.O.read_u16()
+				
+		self.updateDerivedMatrices()
+
+	def updateDerivedMatrices(self):
+		"""Update all derived matrices. MUST be called after any change in numberMatrix or calibrationMatrix or tresholds."""
+		for i in range(15):
+			for j in range(15):
+				# Apply calibration correction
 				self.correctedNumberMatrix[i][j] = self.numberMatrix[i][j] - self.calibrationMatrix[i][j]
 
+				# Calculate the stone type based on corrected values
 				previousStone = self.stoneMatrix[i][j]
 				if self.correctedNumberMatrix[i][j] > self.BLACK_TRESHOLD:
 					self.stoneMatrix[i][j] = 'B'
@@ -50,42 +66,46 @@ class Board:
 				else:
 					self.stoneMatrix[i][j] = ' '
 				
+				# If stone changed, notify observers
 				if previousStone != self.stoneMatrix[i][j]:
-					# Notify observers about the stone change
 					for observer in self.stoneObservers:
 						observer(i, j, previousStone, self.stoneMatrix[i][j])
-
-	def updateDerivedMatrices(self):
-		pass
+		
 
 	
 	def calibrate(self):
+		"""Calibrate the board by reading the current values and setting them as calibration values."""
 		for i in range(15):
 			self.setI(i)
 			for j in range(15):
 				self.setJ(j)
 				self.calibrationMatrix[i][j] = self.O.read_u16()
-				self.correctedNumberMatrix[i][j] = 0
-				self.stoneMatrix[i][j] = ' '
+				
+		self.updateDerivedMatrices()
 
 	def setI(self, value):
-		# Set individual mux
+		"""Choose columns (change 15 muxes)"""
 		self.S0.value(1 if (value & 1) else 0)
 		self.S1.value(1 if (value & 2) else 0)
 		self.S2.value(1 if (value & 4) else 0)
 		self.S3.value(1 if (value & 8) else 0)
 		
 	def setJ(self, value):
-		# Set main mux
+		"""Choose row (main mux)"""
 		self.M0.value(1 if (value & 1) else 0)
 		self.M1.value(1 if (value & 2) else 0)
 		self.M2.value(1 if (value & 4) else 0)
 		self.M3.value(1 if (value & 8) else 0)
 
-	async def startMonitoring(self, interval_ms=100):
+	async def startMonitoring(self, interval_ms=0):
+		"""Start regular board updates at the specified interval."""
 		self.monitoring = True
 		while self.monitoring:
+			#import time
+			#start = time.ticks_ms()
 			self.updateMatrix()
+			#end = time.ticks_ms()
+			#print(f"Board updated in {time.ticks_diff(end, start)} ms")
 			await asyncio.sleep_ms(interval_ms)
 	
 	def stopMonitoring(self):
