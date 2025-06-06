@@ -5,17 +5,34 @@ from server import Server
 from secret import SSID, PASSWORD, AP_SSID, AP_PASSWORD
 from display import Display
 from wifi import WifiConnection
-
+from clock import Clock
+from button import Button
+from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN
 
 
 
 class App:
+    MODE_MENU = 0
+    MODE_CLOCK = 1
+
     def __init__(self):
         self.board = Board()
         self.board.calibrate()
         self.wifi_connection = WifiConnection()
         self.display = Display()
         self.server = Server(self.board)
+        self.clock = Clock()
+        self.clock.add_observer(self.display.clock_update)
+        self.button_left = Button(LEFT_BUTTON_PIN, self._left_button_press)
+        self.button_main = Button(MAIN_BUTTON_PIN, self._main_button_press)
+        self.button_right = Button(RIGHT_BUTTON_PIN, self._right_button_press)
+        self.mode = self.MODE_MENU
+
+        @self.display.add_menu_item("Start game")
+        def start_game():
+            self.mode = self.MODE_CLOCK
+            self.clock.init_clock()
+            self.clock.toggle_running()
 
         @self.display.add_menu_item("Connect to WiFi")
         def set_client_mode():
@@ -40,6 +57,24 @@ class App:
                 'type': 'stone_update',
                 'row': i, 'col': j, 'stone': new_stone
             })))
+
+    def _left_button_press(self):
+        if self.mode == self.MODE_MENU:
+            self.display.menu_left()
+        elif self.mode == self.MODE_CLOCK:
+            self.clock.button1()
+
+    def _main_button_press(self):
+        if self.mode == self.MODE_MENU:
+            self.display.menu_select()
+        elif self.mode == self.MODE_CLOCK:
+            self.clock.toggle_running()
+            
+    def _right_button_press(self):
+        if self.mode == self.MODE_MENU:
+            self.display.menu_right()
+        elif self.mode == self.MODE_CLOCK:
+            self.clock.button2()
 
     async def main(self):
         # Create tasks to run concurrently

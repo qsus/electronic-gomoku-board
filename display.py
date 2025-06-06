@@ -1,6 +1,5 @@
 from machine import Pin
-import time
-from config import DEBOUNCE_TIME, MAIN_BUTTON_PIN, LEFT_BUTTON_PIN, RIGHT_BUTTON_PIN, SCL, SDA
+from config import SCL, SDA
 from lcd_i2c import I2cLcd
 from machine import I2C
 from clock import Clock
@@ -43,81 +42,48 @@ class Display:
 			self.lcd.putstr(" " * (16 - len(line2)))
 
 	def __init__(self):
-		self.button_left = Pin(LEFT_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
-		self.button_main = Pin(MAIN_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
-		self.button_right = Pin(RIGHT_BUTTON_PIN, Pin.IN, Pin.PULL_UP)
-		self.button_left.irq(trigger=Pin.IRQ_FALLING, handler=self._button_press)
-		self.button_main.irq(trigger=Pin.IRQ_FALLING, handler=self._button_press)
-		self.button_right.irq(trigger=Pin.IRQ_FALLING, handler=self._button_press)
-		self.button_left_last = time.ticks_ms()
-		self.button_main_last = time.ticks_ms()
-		self.button_right_last = time.ticks_ms()
 		self.i2c = I2C(1, scl=Pin(SCL), sda=Pin(SDA))
 		self.lcd = I2cLcd(self.i2c, 0x27)
 		self._print_menu()
 
-		self.add_menu_item("Start game")(self._start_game)
-		self.clock = Clock()
-		self.clock.add_observer(self._clock_update)
-
-	def _start_game(self):
-		self.display_mode = self.DISPLAY_MODE_CLOCK
-		self.clock.init_clock()
-		self.clock.toggle_running()
-
-	def _clock_update(self, message):
+	def clock_update(self, clock: Clock):
 		"""Observer method to update the display with the clock message."""
+		message  = f"{clock.time_left[0] // 3600000}:{(clock.time_left[0] // 60000) % 60:02}:{(clock.time_left[0] // 1000) % 60:02}"
+		# H:MM:SS
+		
+		if clock.win == clock.PLAYER_1:
+			statusSignal = "WL"
+		elif clock.win == clock.PLAYER_2:
+			statusSignal = "LW"
+		else:
+			statusSignal = "  "
+
+		if clock.running and clock.turn == clock.PLAYER_1:
+			statusSignal = '*' + statusSignal[1]
+		elif clock.running and clock.turn == clock.PLAYER_2:
+			statusSignal = statusSignal[0] + '*'
+		# WL, LW, or "  ", overlayed with * if running
+
+		message += statusSignal
+		message += f"{clock.time_left[1] // 3600000}:{(clock.time_left[1] // 60000) % 60:02}:{(clock.time_left[1] // 1000) % 60:02}"
+		# H:MM:SS  H:MM:SS (with status signal in the middle)
+
 		self.lcd.move_to(0, 1)
 		self.lcd.putstr(message)
 		
-
-	def _button_press(self, pin):
-		if pin == self.button_left:
-			last = self.button_left_last
-			self.button_left_last = time.ticks_ms()
-			action = self._button_left
-		elif pin == self.button_main:
-			last = self.button_main_last
-			self.button_main_last = time.ticks_ms()
-			action = self._button_main
-		elif pin == self.button_right:
-			last = self.button_right_last
-			self.button_right_last = time.ticks_ms()
-			action = self._button_right
-		else:
-			return
-		# debounce logic; note that button RELEASE might get ignored
-		# operates using time difference
-		diff_time = time.ticks_diff(time.ticks_ms(), last)
-		if diff_time < DEBOUNCE_TIME:
-			return
-		if pin.value() == 1:
-			return
-		action() # Call the appropriate button action method
 		
-	def _button_left(self):
-		if self.display_mode == self.DISPLAY_MODE_CLOCK:
-			self.clock.button1()
-			return
-
+	def menu_left(self):
 		self.menu_index -= 1
 		self.menu_index %= len(self.menu)
 		self._print_menu()
 		
-	def _button_main(self):
+	def menu_select(self):
 		if self.display_mode == self.DISPLAY_MODE_MENU: # Execute action
 			self.menu[self.menu_index][1]()
 		elif self.display_mode == self.DISPLAY_MODE_SPLASH: # Go back to menu
 			self.display_mode = self.DISPLAY_MODE_MENU
-			self._print_menu()
-		elif self.display_mode == self.DISPLAY_MODE_CLOCK: # TODO: Implement clock mode
-			self.clock.toggle_running()
 
-	def _button_right(self):
-		if self.display_mode == self.DISPLAY_MODE_CLOCK:
-			self.clock.button2()
-			return
-
+	def menu_right(self):
 		self.menu_index += 1
 		self.menu_index %= len(self.menu)
 		self._print_menu()

@@ -11,22 +11,8 @@ class Clock:
 		self.observers.add(observer)
 
 	def send_update(self):
-		# H:MM:SS* H:MM:SS (where * is at the running player)
-		message  = f"{self.time_left[0] // 3600000}:{(self.time_left[0] // 60000) % 60:02}:{(self.time_left[0] // 1000) % 60:02}"
-		if self.win == self.PLAYER_1:
-			message += "WL"
-		elif self.win == self.PLAYER_2:
-			message += "LW"
-		elif self.turn == self.PLAYER_1:
-			message += "* "
-		elif self.turn == self.PLAYER_2:
-			message += " *"
-		else:
-			message += "  "
-		message += f"{self.time_left[1] // 3600000}:{(self.time_left[1] // 60000) % 60:02}:{(self.time_left[1] // 1000) % 60:02}"
-		
 		for observer in self.observers:
-			observer(message)
+			observer(self)
 
 	def __init__(self):
 		self.running = False
