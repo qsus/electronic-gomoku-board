@@ -8,6 +8,7 @@ from wifi import WifiConnection
 from clock import Clock
 from button import Button
 from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN
+import gc
 
 
 
@@ -51,6 +52,15 @@ class App:
             # H:MM:SS  H:MM:SS (with status signal in the middle)
 
             self.display.show_splash("Game in progress", message)
+        
+        @self.display.add_menu_item("Welcome to ECB!")
+        def print_debug():
+            self.display.show_splash("ECB", "v1.0")
+            print("Debug information:")
+            print("Free memory:", gc.mem_free(), "bytes, allocated memory:", gc.mem_alloc(), "bytes")
+            gc.collect()
+            print("Free memory:", gc.mem_free(), "bytes, allocated memory:", gc.mem_alloc(), "bytes")
+            
 
         @self.display.add_menu_item("Start game")
         def start_game():
@@ -107,3 +117,8 @@ class App:
         
         # Wait for both tasks indefinitely
         await asyncio.gather(server_task, board_task)
+
+if __name__ == "__main__":
+    print("Starting app...")
+    app = App()
+    asyncio.run(app.main())

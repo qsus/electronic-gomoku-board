@@ -9,9 +9,7 @@ class Display:
 	DISPLAY_MODE_SPLASH = 1
 	DISPLAY_MODE_CLOCK = 2
 
-	menu = [
-		("Welcome to ECB!", lambda: print("Main menu selected")),
-	]
+	menu = []
 	menu_index = 0
 	
 	display_mode = DISPLAY_MODE_MENU

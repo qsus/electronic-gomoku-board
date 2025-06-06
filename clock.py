@@ -65,9 +65,11 @@ class Clock:
 		self.send_update()
 
 	def button1(self):
-		self._apply_elapsed()
+		if self.running:
+			self._apply_elapsed()
 		self.turn = 1
 
 	def button2(self):
-		self._apply_elapsed()
+		if self.running:
+			self._apply_elapsed()
 		self.turn = 0
