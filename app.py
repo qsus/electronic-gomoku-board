@@ -55,12 +55,10 @@ class App:
         
         @self.display.add_menu_item("Welcome to ECB!")
         def print_debug():
-            self.display.show_splash("ECB", "v1.0")
             print("Debug information:")
-            print("Free memory:", gc.mem_free(), "bytes, allocated memory:", gc.mem_alloc(), "bytes")
+            print("Free memory:", gc.mem_free(), "bytes, allocated memory:", gc.mem_alloc(), "bytes (" + str(gc.mem_free() / gc.mem_alloc() * 100) + "%)")
             gc.collect()
-            print("Free memory:", gc.mem_free(), "bytes, allocated memory:", gc.mem_alloc(), "bytes")
-            
+            print("Free memory:", gc.mem_free(), "bytes, allocated memory:", gc.mem_alloc(), "bytes (" + str(gc.mem_free() / gc.mem_alloc() * 100) + "%)")
 
         @self.display.add_menu_item("Start game")
         def start_game():

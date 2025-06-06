@@ -25,7 +25,10 @@ class Display:
 		"""
 		def decorator(func):
 			self.menu.append((label, func))
-			return func
+			if len(self.menu) == 1: # If this is the first menu item, set it as the current one
+				self.menu_index = 0
+				self._print_menu()
+
 		return decorator
 
 	def show_splash(self, line1 = None, line2 = None):
@@ -61,6 +64,9 @@ class Display:
 		self._print_menu()
 
 	def _print_menu(self):
+		if len(self.menu) == 0:
+			self.lcd.clear()
+			return
 		self.lcd.clear()
 		self.lcd.move_to(0, 0)
 		self.lcd.putstr(self.menu[self.menu_index][0])
