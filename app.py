@@ -22,11 +22,35 @@ class App:
         self.display = Display()
         self.server = Server(self.board)
         self.clock = Clock()
-        self.clock.add_observer(self.display.clock_update)
         self.button_left = Button(LEFT_BUTTON_PIN, self._left_button_press)
         self.button_main = Button(MAIN_BUTTON_PIN, self._main_button_press)
         self.button_right = Button(RIGHT_BUTTON_PIN, self._right_button_press)
         self.mode = self.MODE_MENU
+
+        @self.clock.add_observer
+        def clock_update(clock: Clock):
+            """Observer method to update the display with the clock message."""
+            message  = f"{clock.time_left[0] // 3600000}:{(clock.time_left[0] // 60000) % 60:02}:{(clock.time_left[0] // 1000) % 60:02}"
+            # H:MM:SS
+            
+            if clock.win == clock.PLAYER_1:
+                statusSignal = "WL"
+            elif clock.win == clock.PLAYER_2:
+                statusSignal = "LW"
+            else:
+                statusSignal = "  "
+
+            if clock.running and clock.turn == clock.PLAYER_1:
+                statusSignal = '*' + statusSignal[1]
+            elif clock.running and clock.turn == clock.PLAYER_2:
+                statusSignal = statusSignal[0] + '*'
+            # WL, LW, or "  ", overlayed with * if running
+
+            message += statusSignal
+            message += f"{clock.time_left[1] // 3600000}:{(clock.time_left[1] // 60000) % 60:02}:{(clock.time_left[1] // 1000) % 60:02}"
+            # H:MM:SS  H:MM:SS (with status signal in the middle)
+
+            self.display.show_splash("Game in progress", message)
 
         @self.display.add_menu_item("Start game")
         def start_game():
@@ -69,7 +93,7 @@ class App:
             self.display.menu_select()
         elif self.mode == self.MODE_CLOCK:
             self.clock.toggle_running()
-            
+
     def _right_button_press(self):
         if self.mode == self.MODE_MENU:
             self.display.menu_right()

@@ -45,33 +45,7 @@ class Display:
 		self.i2c = I2C(1, scl=Pin(SCL), sda=Pin(SDA))
 		self.lcd = I2cLcd(self.i2c, 0x27)
 		self._print_menu()
-
-	def clock_update(self, clock: Clock):
-		"""Observer method to update the display with the clock message."""
-		message  = f"{clock.time_left[0] // 3600000}:{(clock.time_left[0] // 60000) % 60:02}:{(clock.time_left[0] // 1000) % 60:02}"
-		# H:MM:SS
-		
-		if clock.win == clock.PLAYER_1:
-			statusSignal = "WL"
-		elif clock.win == clock.PLAYER_2:
-			statusSignal = "LW"
-		else:
-			statusSignal = "  "
-
-		if clock.running and clock.turn == clock.PLAYER_1:
-			statusSignal = '*' + statusSignal[1]
-		elif clock.running and clock.turn == clock.PLAYER_2:
-			statusSignal = statusSignal[0] + '*'
-		# WL, LW, or "  ", overlayed with * if running
-
-		message += statusSignal
-		message += f"{clock.time_left[1] // 3600000}:{(clock.time_left[1] // 60000) % 60:02}:{(clock.time_left[1] // 1000) % 60:02}"
-		# H:MM:SS  H:MM:SS (with status signal in the middle)
-
-		self.lcd.move_to(0, 1)
-		self.lcd.putstr(message)
-		
-		
+			
 	def menu_left(self):
 		self.menu_index -= 1
 		self.menu_index %= len(self.menu)
