@@ -9,6 +9,7 @@ class Button:
 		self._last_press = ticks_ms()
 		self.callback = callback
 		asyncio.create_task(self._loop()) # Start the asynchronous loop
+		self.has_been_released = True # Used in case asyncio caused too large delay
 
 	async def _loop(self):
 		"""Asynchronous loop to check the button state."""
@@ -18,8 +19,11 @@ class Button:
 				last = self._last_press
 				self._last_press = ticks_ms()
 				diff_time = ticks_diff(self._last_press, last)
-				if diff_time > DEBOUNCE_TIME: # If hasn't been pressed recently
+				if diff_time > DEBOUNCE_TIME and self.has_been_released: # If hasn't been pressed recently
 					self.callback()
+					self.has_been_released = False
+			else:
+				self.has_been_released = True
 			await asyncio.sleep(0.01) # yield
 
 	def set_callback(self, callback):
