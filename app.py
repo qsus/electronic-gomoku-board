@@ -107,4 +107,3 @@ class App:
         
         # Wait for both tasks indefinitely
         await asyncio.gather(server_task, board_task)
-
