@@ -9,8 +9,7 @@ from clock import Clock
 from button import Button
 from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN
 import gc
-
-
+import time
 
 class App:
     MODE_MENU = 0
@@ -18,7 +17,7 @@ class App:
 
     def __init__(self):
         self.board = Board()
-        self.board.calibrate()
+        asyncio.create_task(self.board.calibrate())
         self.wifi_connection = WifiConnection()
         self.display = Display()
         self.server = Server(self.board)
@@ -56,11 +55,11 @@ class App:
         @self.display.add_menu_item("Welcome to ECB!")
         def print_debug():
             print("Debug information:")
-            print("Free memory:", gc.mem_free(), "bytes, allocated memory:", gc.mem_alloc(), "bytes (" +
-                  str(gc.mem_alloc() / (gc.mem_free() + gc.mem_alloc()) * 100) + "%)")
             gc.collect()
-            print("Free memory:", gc.mem_free(), "bytes, allocated memory:", gc.mem_alloc(), "bytes (" +
-                  str(gc.mem_alloc() / (gc.mem_free() + gc.mem_alloc()) * 100) + "%)")
+            free = gc.mem_free()
+            allocated = gc.mem_alloc()
+            total = free + allocated
+            print(f"Memory: {allocated}/{total} ({allocated / total * 100}%) allocated, {free} free")
 
         @self.display.add_menu_item("Start game")
         def start_game():

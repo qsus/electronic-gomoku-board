@@ -2,18 +2,21 @@ from machine import ADC, Pin
 import uasyncio as asyncio
 from matrix_transformator import transform_matrix
 from config import O, E, S0, S1, S2, S3, M0, M1, M2, M3, BLACK_THRESHOLD, WHITE_THRESHOLD, ROTATION, FLIP
+import time
 
 class Board:
-	# variable matrices
-	number_matrix = [[31800]*15 for _ in range(15)]
-	calibration_matrix = [[31800]*15 for _ in range(15)]
-	# derived matrices
-	corrected_number_matrix = [[0]*15 for _ in range(15)]
-	stone_matrix = [[' ']*15 for _ in range(15)]
-	rotated_stone_matrix = [[' ']*15 for _ in range(15)]
-	rotated_corrected_number_matrix = [[0]*15 for _ in range(15)]
-
 	def __init__(self):
+		# variable matrices
+		self.number_matrix = [[31800]*15 for _ in range(15)]
+		self.calibration_matrix = [[31800]*15 for _ in range(15)]
+		# derived matrices
+		self.corrected_number_matrix = [[0]*15 for _ in range(15)]
+		self.stone_matrix = [[' ']*15 for _ in range(15)]
+		self.rotated_stone_matrix = [[' ']*15 for _ in range(15)]
+		self.rotated_corrected_number_matrix = [[0]*15 for _ in range(15)]
+
+		self.debug_last_duration = 0
+
 		self.O = ADC(Pin(O)) # output pin
 		self.E = E # enable pin, not used
 		
@@ -35,7 +38,7 @@ class Board:
 		# Stone change observers
 		self.stone_observers = []
 
-	def update_matrix(self):
+	async def update_matrix(self):
 		"""Read the current values from the board and update the number_matrix.
 		This takes about 24ms for the reading and in total 70ms including the update of derived matrices.
 		"""
@@ -44,10 +47,11 @@ class Board:
 			for j in range(15):
 				self.set_j(j)
 				self.number_matrix[i][j] = self.O.read_u16()
-				
-		self.update_derived_matrices()
+			await asyncio.sleep_ms(0) # yield
 
-	def update_derived_matrices(self):
+		await self.update_derived_matrices()
+
+	async def update_derived_matrices(self):
 		"""Update all derived matrices. MUST be called after any change in number_matrix or calibration_matrix or tresholds."""
 		for i in range(15):
 			for j in range(15):
@@ -67,6 +71,7 @@ class Board:
 				if previous_stone != self.stone_matrix[i][j]:
 					for observer in self.stone_observers:
 						observer(i, j, previous_stone, self.stone_matrix[i][j])
+			await asyncio.sleep_ms(0) # yield
 
 		# Transform matrices
 		self.rotated_stone_matrix = transform_matrix(self.stone_matrix, rotation=ROTATION, flip=FLIP)
@@ -75,7 +80,7 @@ class Board:
 		
 
 	
-	def calibrate(self):
+	async def calibrate(self):
 		"""Calibrate the board by reading the current values and setting them as calibration values."""
 		for i in range(15):
 			self.set_i(i)
@@ -83,7 +88,7 @@ class Board:
 				self.set_j(j)
 				self.calibration_matrix[i][j] = self.O.read_u16()
 				
-		self.update_derived_matrices()
+		await self.update_derived_matrices()
 
 	def set_i(self, value):
 		"""Choose columns (change 15 muxes)"""
@@ -105,7 +110,7 @@ class Board:
 		while self.monitoring:
 			#import time
 			#start = time.ticks_ms()
-			self.update_matrix()
+			await self.update_matrix()
 			#end = time.ticks_ms()
 			#print(f"Board updated in {time.ticks_diff(end, start)} ms")
 			await asyncio.sleep_ms(interval_ms)
