@@ -3,6 +3,7 @@ import time
 from config import DEBOUNCE_TIME, MAIN_BUTTON_PIN, LEFT_BUTTON_PIN, RIGHT_BUTTON_PIN, SCL, SDA
 from lcd_i2c import I2cLcd
 from machine import I2C
+from clock import Clock
 
 class Display:
 	DISPLAY_MODE_MENU = 0
@@ -55,6 +56,21 @@ class Display:
 		self.lcd = I2cLcd(self.i2c, 0x27)
 		self._print_menu()
 
+		self.add_menu_item("Start game")(self._start_game)
+		self.clock = Clock()
+		self.clock.add_observer(self._clock_update)
+
+	def _start_game(self):
+		self.display_mode = self.DISPLAY_MODE_CLOCK
+		self.clock.init_clock()
+		self.clock.toggle_running()
+
+	def _clock_update(self, message):
+		"""Observer method to update the display with the clock message."""
+		self.lcd.move_to(0, 1)
+		self.lcd.putstr(message)
+		
+
 	def _button_press(self, pin):
 		if pin == self.button_left:
 			last = self.button_left_last
@@ -80,6 +96,10 @@ class Display:
 		action() # Call the appropriate button action method
 		
 	def _button_left(self):
+		if self.display_mode == self.DISPLAY_MODE_CLOCK:
+			self.clock.button1()
+			return
+
 		self.menu_index -= 1
 		self.menu_index %= len(self.menu)
 		self._print_menu()
@@ -91,9 +111,13 @@ class Display:
 			self.display_mode = self.DISPLAY_MODE_MENU
 			self._print_menu()
 		elif self.display_mode == self.DISPLAY_MODE_CLOCK: # TODO: Implement clock mode
-			pass
+			self.clock.toggle_running()
 
 	def _button_right(self):
+		if self.display_mode == self.DISPLAY_MODE_CLOCK:
+			self.clock.button2()
+			return
+
 		self.menu_index += 1
 		self.menu_index %= len(self.menu)
 		self._print_menu()
