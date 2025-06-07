@@ -17,7 +17,7 @@ class App:
 
     def __init__(self):
         self.board = Board()
-        asyncio.create_task(self.board.calibrate())
+        self.board.calibrate()
         self.wifi_connection = WifiConnection()
         self.display = Display()
         self.server = Server(self.board)
@@ -36,7 +36,7 @@ class App:
                 now = time.ticks_ms()
                 self.last_loop_start = now
                 self.last_loop_duration = time.ticks_diff(now, last)
-                print(self.last_loop_duration, end=' ')
+                #print(self.last_loop_duration, end=' ')
                 await asyncio.sleep(0)
         asyncio.create_task(loop_measure())
 

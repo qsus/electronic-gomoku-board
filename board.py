@@ -3,19 +3,15 @@ import uasyncio as asyncio
 from matrix_transformator import transform_matrix
 from config import O, E, S0, S1, S2, S3, M0, M1, M2, M3, BLACK_THRESHOLD, WHITE_THRESHOLD, ROTATION, FLIP
 import time
+import rp2
+import micropython
 
 class Board:
 	def __init__(self):
-		# variable matrices
+		# matrices
 		self.number_matrix = [[31800]*15 for _ in range(15)]
 		self.calibration_matrix = [[31800]*15 for _ in range(15)]
-		# derived matrices
-		self.corrected_number_matrix = [[0]*15 for _ in range(15)]
 		self.stone_matrix = [[' ']*15 for _ in range(15)]
-		self.rotated_stone_matrix = [[' ']*15 for _ in range(15)]
-		self.rotated_corrected_number_matrix = [[0]*15 for _ in range(15)]
-
-		self.debug_last_duration = 0
 
 		self.O = ADC(Pin(O)) # output pin
 		self.E = E # enable pin, not used
@@ -37,61 +33,67 @@ class Board:
 		
 		# Stone change observers
 		self.stone_observers = []
+		self.changed_stones = []
 
-	async def update_matrix(self):
-		"""Read the current values from the board and update the number_matrix.
-		This takes about 24ms for the reading and in total 70ms including the update of derived matrices.
-		"""
+		@rp2.asm_pio(out_init=[rp2.PIO.OUT_LOW] * 4)
+		def asm_mux_writer():
+			wrap_target()                           # type: ignore
+			pull() # FIFO > OSR; one word = 32 bits # type: ignore
+			out(pins, 4) # OSR > pins; 4 bits       # type: ignore
+			push(noblock)                           # type: ignore
+			wrap()                                  # type: ignore
+		
+		self.sm_mux_i = rp2.StateMachine(0, asm_mux_writer, out_base=Pin(S0), out_shiftdir=rp2.PIO.SHIFT_RIGHT) # type: ignore
+		self.sm_mux_i.active(1)
+		self.sm_mux_j = rp2.StateMachine(1, asm_mux_writer, out_base=Pin(M0), out_shiftdir=rp2.PIO.SHIFT_RIGHT) # type: ignore
+		self.sm_mux_j.active(1)
+	
+	@micropython.native
+	def update_matrix(self):
+		"""Read the current values from the board and update the number_matrix."""
+		# Time to run the whole function in ms:
+		# without assembly: 19 or 27 if called from function
+		# with assembly:    13 or 21 if called from function
+		# Timings after each command aren't relevant because they add up to lower numbers
 		for i in range(15):
-			self.set_i(i)
-			for j in range(15):
-				self.set_j(j)
-				self.number_matrix[i][j] = self.O.read_u16()
-			await asyncio.sleep_ms(0) # yield
-
-		await self.update_derived_matrices()
-
-	async def update_derived_matrices(self):
-		"""Update all derived matrices. MUST be called after any change in number_matrix or calibration_matrix or tresholds."""
-		for i in range(15):
-			for j in range(15):
-				# Apply calibration correction
-				self.corrected_number_matrix[i][j] = self.number_matrix[i][j] - self.calibration_matrix[i][j]
+			self.sm_mux_i.put(i) # 30 us
+			self.sm_mux_i.get()  # 30 us both commands
+			# TODO: rotation here
+			for j in range(15):				
+				self.sm_mux_j.put(j) # 30 us
+				self.sm_mux_j.get()  # 30 us both commands
+				
+				# Read the value from the ADC and correct it with the calibration matrix
+				self.number_matrix[i][j] = self.O.read_u16() - self.calibration_matrix[i][j] # 30 us
 
 				# Calculate the stone type based on corrected values
 				previous_stone = self.stone_matrix[i][j]
-				if self.corrected_number_matrix[i][j] > BLACK_THRESHOLD:
+				if self.number_matrix[i][j] > BLACK_THRESHOLD:
 					self.stone_matrix[i][j] = 'B'
-				elif self.corrected_number_matrix[i][j] < -WHITE_THRESHOLD:
+				elif self.number_matrix[i][j] < -WHITE_THRESHOLD:
 					self.stone_matrix[i][j] = 'W'
 				else:
 					self.stone_matrix[i][j] = ' '
-				
-				# If stone changed, notify observers
+
+				# Notify observers if the stone has changed
 				if previous_stone != self.stone_matrix[i][j]:
-					for observer in self.stone_observers:
-						observer(i, j, previous_stone, self.stone_matrix[i][j])
-			await asyncio.sleep_ms(0) # yield
-
-		# Transform matrices
-		self.rotated_stone_matrix = transform_matrix(self.stone_matrix, rotation=ROTATION, flip=FLIP)
-		self.rotated_corrected_number_matrix = transform_matrix(self.corrected_number_matrix, rotation=ROTATION, flip=FLIP)
-
-		
-
+					self.changed_stones.append((i, j, previous_stone, self.stone_matrix[i][j]))
 	
-	async def calibrate(self):
+	def calibrate(self):
 		"""Calibrate the board by reading the current values and setting them as calibration values."""
 		for i in range(15):
-			self.set_i(i)
+			self.sm_mux_i.put(i)
+			self.sm_mux_i.get()
 			for j in range(15):
-				self.set_j(j)
+				self.sm_mux_j.put(j)
+				self.sm_mux_j.get()
 				self.calibration_matrix[i][j] = self.O.read_u16()
-				
-		await self.update_derived_matrices()
 
 	def set_i(self, value):
 		"""Choose columns (change 15 muxes)"""
+		self.sm_mux_i.put(value)
+		self.sm_mux_i.get()
+		return
 		self.S0.value(1 if (value & 1) else 0)
 		self.S1.value(1 if (value & 2) else 0)
 		self.S2.value(1 if (value & 4) else 0)
@@ -99,6 +101,9 @@ class Board:
 		
 	def set_j(self, value):
 		"""Choose row (main mux)"""
+		self.sm_mux_j.put(value)
+		self.sm_mux_j.get()
+		return
 		self.M0.value(1 if (value & 1) else 0)
 		self.M1.value(1 if (value & 2) else 0)
 		self.M2.value(1 if (value & 4) else 0)
@@ -108,11 +113,17 @@ class Board:
 		"""Start regular board updates at the specified interval."""
 		self.monitoring = True
 		while self.monitoring:
-			#import time
-			#start = time.ticks_ms()
-			await self.update_matrix()
-			#end = time.ticks_ms()
-			#print(f"Board updated in {time.ticks_diff(end, start)} ms")
+			e1 = time.ticks_us()
+			self.update_matrix()
+			e2 = time.ticks_us()
+			
+			# Notify observers about changed stones
+			while self.changed_stones:
+				i, j, previous_stone, new_stone = self.changed_stones.pop(0)
+				for observer in self.stone_observers:
+					observer(i, j, previous_stone, new_stone)
+
+			#print("update_matrix", e2 - e1)
 			await asyncio.sleep_ms(interval_ms)
 	
 	def stop_monitoring(self):
