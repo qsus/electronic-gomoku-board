@@ -1,6 +1,5 @@
 from machine import ADC, Pin
 import uasyncio as asyncio
-from matrix_transformator import transform_matrix
 from config import O, E, S0, S1, S2, S3, M0, M1, M2, M3, BLACK_THRESHOLD, WHITE_THRESHOLD, ROTATION, FLIP, D_TIMINGS
 import time
 import rp2
@@ -35,18 +34,21 @@ class Board:
 		self.stone_observers = []
 		self.changed_stones = []
 
-		@rp2.asm_pio(out_init=[rp2.PIO.OUT_LOW] * 4)
-		def asm_mux_writer():
-			wrap_target()                           # type: ignore
-			pull() # FIFO > OSR; one word = 32 bits # type: ignore
-			out(pins, 4) # OSR > pins; 4 bits       # type: ignore
-			push(noblock)                           # type: ignore
-			wrap()                                  # type: ignore
-		
-		self.sm_mux_i = rp2.StateMachine(0, asm_mux_writer, out_base=Pin(S0), out_shiftdir=rp2.PIO.SHIFT_RIGHT) # type: ignore
-		self.sm_mux_i.active(1)
-		self.sm_mux_j = rp2.StateMachine(1, asm_mux_writer, out_base=Pin(M0), out_shiftdir=rp2.PIO.SHIFT_RIGHT) # type: ignore
-		self.sm_mux_j.active(1)
+
+		self.GRAY_CODE_S = [  # write value to S and the output is index j
+			(0b0001, self.S0, 1), (0b0011, self.S1, 1), (0b0010, self.S0, 0), (0b0110, self.S2, 1),
+			(0b0111, self.S0, 1), (0b0101, self.S1, 0),	(0b0100, self.S0, 0), (0b1100, self.S3, 1),
+			(0b1101, self.S0, 1), (0b1111, self.S1, 1),	(0b1110, self.S0, 0), (0b1010, self.S2, 0),
+			(0b1011, self.S0, 1), (0b1001, self.S1, 0),	(0b1000, self.S0, 0), (0b0000, self.S3, 0),
+		]
+		self.GRAY_CODE_M = [  # write value to M and the output is index j
+			(0b0001, self.M0, 1), (0b0011, self.M1, 1), (0b0010, self.M0, 0), (0b0110, self.M2, 1),
+			(0b0111, self.M0, 1), (0b0101, self.M1, 0),	(0b0100, self.M0, 0), (0b1100, self.M3, 1),
+			(0b1101, self.M0, 1), (0b1111, self.M1, 1),	(0b1110, self.M0, 0), (0b1010, self.M2, 0),
+			(0b1011, self.M0, 1), (0b1001, self.M1, 0),	(0b1000, self.M0, 0), (0b0000, self.M3, 0),
+		]
+
+
 	
 	@micropython.native
 	def update_matrix(self, calibrate=False):
@@ -55,13 +57,22 @@ class Board:
 		# without assembly: 19 or 27 if called from function
 		# with assembly:    13 or 21 if called from function
 		# Timings after each command aren't relevant because they add up to lower numbers
-		for i in range(15):
-			self.sm_mux_i.put(i) # 30 us
-			self.sm_mux_i.get()  # 30 us both commands
-			# TODO: rotation here
-			for j in range(15):				
-				self.sm_mux_j.put(j) # 30 us
-				self.sm_mux_j.get()  # 30 us both commands
+		
+		# Reset all mux to 0
+		for mux in [self.M0, self.M1, self.M2, self.M3, self.S0, self.S1, self.S2, self.S3]:
+			mux.value(0)
+
+		for i, S, value in self.GRAY_CODE_S:
+			# set value and ensure not out of range
+			S.value(value)
+			if i >= 15:
+				continue
+
+			for j, M, value in self.GRAY_CODE_M:
+				# set value and ensure not out of range
+				M.value(value)
+				if j >= 15:
+					continue
 				
 				# Read the value from the ADC and correct it with the calibration matrix
 				if calibrate:
@@ -84,19 +95,10 @@ class Board:
 	
 	def calibrate(self):
 		"""Calibrate the board by reading the current values and setting them as calibration values."""
-		for i in range(15):
-			self.sm_mux_i.put(i)
-			self.sm_mux_i.get()
-			for j in range(15):
-				self.sm_mux_j.put(j)
-				self.sm_mux_j.get()
-				self.calibration_matrix[i][j] = self.O.read_u16()
+		self.update_matrix(calibrate=True)
 
 	def set_i(self, value):
 		"""Choose columns (change 15 muxes)"""
-		self.sm_mux_i.put(value)
-		self.sm_mux_i.get()
-		return
 		self.S0.value(1 if (value & 1) else 0)
 		self.S1.value(1 if (value & 2) else 0)
 		self.S2.value(1 if (value & 4) else 0)
@@ -104,9 +106,6 @@ class Board:
 		
 	def set_j(self, value):
 		"""Choose row (main mux)"""
-		self.sm_mux_j.put(value)
-		self.sm_mux_j.get()
-		return
 		self.M0.value(1 if (value & 1) else 0)
 		self.M1.value(1 if (value & 2) else 0)
 		self.M2.value(1 if (value & 4) else 0)

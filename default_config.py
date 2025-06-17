@@ -36,4 +36,4 @@ PREFER_CLIENT = True
 PORT = 80
 
 # Debug settings
-D_TIMINGS = True
+D_TIMINGS = False
