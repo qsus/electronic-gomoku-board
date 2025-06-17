@@ -134,7 +134,7 @@
                     }
                     else if (data.type === 'stone_update') { // Update for a single stone
                         Array.from(document.getElementsByClassName("board")).forEach(board => {
-                            setStone(data.col, data.row, data.stone, board);
+                            setStone(data.x, data.y, data.stone, board);
                         });
                     }
                     else {

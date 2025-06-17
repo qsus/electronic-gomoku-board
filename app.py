@@ -99,7 +99,7 @@ class App:
         async def stone_update(i, j, previous_stone, new_stone):
             await self.server.send_to_all(json.dumps({
                 'type': 'stone_update',
-                'row': i, 'col': j, 'stone': new_stone
+                'x': i, 'y': j, 'stone': new_stone
             }))
 
     def _left_button_press(self):

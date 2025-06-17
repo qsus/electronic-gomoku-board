@@ -53,11 +53,6 @@ class Board:
 	@micropython.native
 	def update_matrix(self, calibrate=False):
 		"""Read the current values from the board and update the number_matrix."""
-		# Time to run the whole function in ms:
-		# without assembly: 19 or 27 if called from function
-		# with assembly:    13 or 21 if called from function
-		# Timings after each command aren't relevant because they add up to lower numbers
-		
 		# Reset all mux to 0
 		for mux in [self.M0, self.M1, self.M2, self.M3, self.S0, self.S1, self.S2, self.S3]:
 			mux.value(0)
@@ -73,25 +68,37 @@ class Board:
 				M.value(value)
 				if j >= 15:
 					continue
+
+				# Based on rotation and flip, adjust the indices
+				if ROTATION == 0:
+					x, y = 14 - i, 14 - j
+				elif ROTATION == 1:
+					x, y = j, 14 - i
+				elif ROTATION == 2:
+					x, y = i, j
+				elif ROTATION == 3:
+					x, y = 14 - j, i
+				if FLIP:
+					x, y = 14 - x, y
 				
 				# Read the value from the ADC and correct it with the calibration matrix
 				if calibrate:
-					self.calibration_matrix[i][j] = self.O.read_u16()
+					self.calibration_matrix[x][y] = self.O.read_u16()
 				else:
-					self.number_matrix[i][j] = self.O.read_u16() - self.calibration_matrix[i][j] # 30 us
+					self.number_matrix[x][y] = self.O.read_u16() - self.calibration_matrix[x][y] # 30 us
 
 				# Calculate the stone type based on corrected values
-				previous_stone = self.stone_matrix[i][j]
-				if self.number_matrix[i][j] > BLACK_THRESHOLD:
-					self.stone_matrix[i][j] = 'B'
-				elif self.number_matrix[i][j] < -WHITE_THRESHOLD:
-					self.stone_matrix[i][j] = 'W'
+				previous_stone = self.stone_matrix[x][y]
+				if self.number_matrix[x][y] > BLACK_THRESHOLD:
+					self.stone_matrix[x][y] = 'B'
+				elif self.number_matrix[x][y] < -WHITE_THRESHOLD:
+					self.stone_matrix[x][y] = 'W'
 				else:
-					self.stone_matrix[i][j] = ' '
+					self.stone_matrix[x][y] = ' '
 
 				# Notify observers if the stone has changed
-				if previous_stone != self.stone_matrix[i][j]:
-					self.changed_stones.append((i, j, previous_stone, self.stone_matrix[i][j]))
+				if previous_stone != self.stone_matrix[x][y]:
+					self.changed_stones.append((x, y, previous_stone, self.stone_matrix[x][y]))
 	
 	def calibrate(self):
 		"""Calibrate the board by reading the current values and setting them as calibration values."""
@@ -123,9 +130,9 @@ class Board:
 			
 			# Notify observers about changed stones
 			while self.changed_stones:
-				i, j, previous_stone, new_stone = self.changed_stones.pop(0)
+				x, y, previous_stone, new_stone = self.changed_stones.pop(0)
 				for observer in self.stone_observers:
-					await observer(i, j, previous_stone, new_stone)
+					await observer(x, y, previous_stone, new_stone)
 
 			await asyncio.sleep_ms(interval_ms)
 	

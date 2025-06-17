@@ -14,7 +14,7 @@ E = None # Enable pin, not used
 BLACK_THRESHOLD = 600
 WHITE_THRESHOLD = 600
 ROTATION = 0 # 0-3 (number of 90° clockwise rotations)
-FLIP = True
+FLIP = False
 
 # Menu buttons
 DEBOUNCE_TIME = 100 # milliseconds
