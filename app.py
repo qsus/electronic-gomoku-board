@@ -6,7 +6,7 @@ from display import Display
 from wifi import WifiConnection
 from clock import Clock
 from button import Button
-from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN, SSID, PASSWORD, AP_SSID, AP_PASSWORD
+from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN, SSID, PASSWORD, AP_SSID, AP_PASSWORD, D_TIMINGS
 import gc
 import time
 
@@ -26,18 +26,17 @@ class App:
         self.button_right = Button(RIGHT_BUTTON_PIN, self._right_button_press)
         self.mode = self.MODE_MENU
         
-        self.last_loop_start = 0
-        self.last_loop_duration = 0
-        async def loop_measure():
-            """Measure the duration of the main loop."""
-            while True:
-                last = self.last_loop_start
-                now = time.ticks_ms()
-                self.last_loop_start = now
-                self.last_loop_duration = time.ticks_diff(now, last)
-                #print(self.last_loop_duration, end=' ')
-                await asyncio.sleep(0)
-        asyncio.create_task(loop_measure())
+        if D_TIMINGS:
+            self.last_loop_start = 0
+            async def loop_measure():
+                """Measure the duration of the main loop."""
+                while True:
+                    last = self.last_loop_start
+                    now = time.ticks_ms()
+                    self.last_loop_start = now
+                    print(time.ticks_diff(now, last), end='l ')
+                    await asyncio.sleep(0)
+            asyncio.create_task(loop_measure())
 
         @self.clock.add_observer
         def clock_update(clock: Clock):

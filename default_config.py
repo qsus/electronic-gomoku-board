@@ -34,3 +34,6 @@ AP_PASSWORD="piskvorky"
 HOSTNAME = 'ECB'
 PREFER_CLIENT = True
 PORT = 80
+
+# Debug settings
+D_TIMINGS = True

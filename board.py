@@ -1,7 +1,7 @@
 from machine import ADC, Pin
 import uasyncio as asyncio
 from matrix_transformator import transform_matrix
-from config import O, E, S0, S1, S2, S3, M0, M1, M2, M3, BLACK_THRESHOLD, WHITE_THRESHOLD, ROTATION, FLIP
+from config import O, E, S0, S1, S2, S3, M0, M1, M2, M3, BLACK_THRESHOLD, WHITE_THRESHOLD, ROTATION, FLIP, D_TIMINGS
 import time
 import rp2
 import micropython
@@ -113,9 +113,11 @@ class Board:
 		"""Start regular board updates at the specified interval."""
 		self.monitoring = True
 		while self.monitoring:
-			e1 = time.ticks_us()
+			t0 = time.ticks_us()
 			self.update_matrix()
-			e2 = time.ticks_us()
+			t1 = time.ticks_us()
+			if D_TIMINGS:
+				print(time.ticks_diff(t1, t0), end='m ')
 			
 			# Notify observers about changed stones
 			while self.changed_stones:
@@ -123,7 +125,6 @@ class Board:
 				for observer in self.stone_observers:
 					await observer(i, j, previous_stone, new_stone)
 
-			#print("update_matrix", e2 - e1)
 			await asyncio.sleep_ms(interval_ms)
 	
 	def stop_monitoring(self):
