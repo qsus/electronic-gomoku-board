@@ -1,4 +1,4 @@
-from secret import SSID, PASSWORD, AP_SSID, AP_PASSWORD
+from config import SSID, PASSWORD, AP_SSID, AP_PASSWORD
 import network
 from config import PREFER_CLIENT
 

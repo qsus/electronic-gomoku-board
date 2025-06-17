@@ -27,6 +27,10 @@ SCL = 19
 SDA = 18
 
 # Network settings
+SSID="Your SSID"
+PASSWORD="p&ssw0rd"
+AP_SSID="ECB"
+AP_PASSWORD="piskvorky"
 HOSTNAME = 'ECB'
 PREFER_CLIENT = True
 PORT = 80
