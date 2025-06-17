@@ -3,220 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Electronic Gomoku Board</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-        }
-        h1 {
-            margin-bottom: 20px;
-        }
-        #board {
-            display: inline-block;
-            margin: 20px auto;
-            position: relative;
-            background-color: #e0bb7a;
-            padding: 20px;
-        }
-        .intersection {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            margin: -5px 0 0 -5px;
-        }
-        .stone {
-            position: absolute;
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            margin: -13px 0 0 -13px;
-            text-align: center;
-            line-height: 26px;
-            font-size: 0px;
-        }
-        .black-stone {
-            background-color: #000;
-            color: white;
-        }
-        .white-stone {
-            background-color: #fff;
-            border: 1px solid #000;
-            color: black;
-        }
-        .status {
-            margin: 10px 0;
-            padding: 8px;
-            border-radius: 4px;
-        }
-        .connected {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .disconnected {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
+    <title>Electronic Gomoku Board – Live preview</title>
 </head>
 <body>
     <h1>Electronic Gomoku Board</h1>
+    <h2>Live preview</h2>
+
+    <div class="board" id="live-board"></div>
     
-    <div id="connection-status" class="status disconnected">Disconnected</div>
-    
-    <div id="board-container">
-        <div id="board"></div>
-    </div>
-    
+    <div class="connection-status disconnected">Connecting...</div>
+
+
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const board = document.getElementById('board');
-            const connectionStatus = document.getElementById('connection-status');
-            let socket;
-            let interval;
-            const cellSize = 30; // Size between intersections
-            
-            // Initialize the board with 15x15 intersections
-            function init_board() {
-                board.innerHTML = '';
-                board.style.width = `${cellSize * 14}px`;
-                board.style.height = `${cellSize * 14}px`;
-                
-                // Draw horizontal lines
-                for (let i = 0; i < 15; i++) {
-                    const hLine = document.createElement('div');
-                    hLine.style.position = 'absolute';
-                    hLine.style.left = '0';
-                    hLine.style.top = `${i * cellSize}px`;
-                    hLine.style.width = '100%';
-                    hLine.style.height = '1px';
-                    hLine.style.backgroundColor = '#000';
-                    board.appendChild(hLine);
-                }
-                
-                // Draw vertical lines
-                for (let i = 0; i < 15; i++) {
-                    const vLine = document.createElement('div');
-                    vLine.style.position = 'absolute';
-                    vLine.style.top = '0';
-                    vLine.style.left = `${i * cellSize}px`;
-                    vLine.style.height = '100%';
-                    vLine.style.width = '1px';
-                    vLine.style.backgroundColor = '#000';
-                    board.appendChild(vLine);
-                }
-                
-                // Add intersections (dots where lines meet)
-                for (let i = 0; i < 15; i++) {
-                    for (let j = 0; j < 15; j++) {
-                        const intersection = document.createElement('div');
-                        intersection.className = 'intersection';
-                        intersection.dataset.row = i;
-                        intersection.dataset.col = j;
-                        intersection.style.left = `${j * cellSize}px`;
-                        intersection.style.top = `${i * cellSize}px`;
+        const BOARD_SIZE = 15;
+        
+        document.addEventListener("DOMContentLoaded", initBoard);
+        document.addEventListener("DOMContentLoaded", connect);
+
+        function initBoard() {
+            // fill div board
+            Array.from(document.getElementsByClassName("board")).forEach(board => {
+                for (let i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) {
+                    if (i == 0) {
+                        // add top left corner
+                        const corner = document.createElement("div");
+                        corner.className = "corner";
+                        board.appendChild(corner);
                         
-                        // Create stone element (initially hidden)
-                        const stone = document.createElement('div');
-                        stone.className = 'stone';
-                        stone.id = `stone-${i}-${j}`;
-                        stone.style.left = `${j * cellSize}px`;
-                        stone.style.top = `${i * cellSize}px`;
-                        stone.style.display = 'none';
-                        
-                        board.appendChild(intersection);
-                        board.appendChild(stone);
-                    }
-                }
-            }
-            
-            // Update the board with received data
-            function update_board(data) {
-                if (!Array.isArray(data) || data.length !== 15) return;
-                
-                for (let i = 0; i < 15; i++) {
-                    if (!Array.isArray(data[i]) || data[i].length !== 15) continue;
-                    
-                    for (let j = 0; j < 15; j++) {
-                        update_stone(i, j, data[i][j]);
-                    }
-                }
-            }
-            
-            // Connect to WebSocket
-            function connect() {
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const wsUrl = `${protocol}//${window.location.host}/ws`;
-                
-                socket = new WebSocket(wsUrl);
-                
-                socket.onopen = () => {
-                    connectionStatus.textContent = 'Connected';
-                    connectionStatus.className = 'status connected';
-                    // No need to periodically request the board anymore
-                };
-                
-                socket.onclose = () => {
-                    connectionStatus.textContent = 'Disconnected. Attempting to reconnect...';
-                    connectionStatus.className = 'status disconnected';
-                    
-                    // Try to reconnect after a delay
-                    setTimeout(connect, 2000);
-                };
-                
-                socket.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                };
-                
-                socket.onmessage = (event) => {
-                    try {
-                        const data = JSON.parse(event.data);
-                        
-                        // Handle messages based on their type
-                        if (data.type === 'full_board') {
-                            // Full board update with the entire matrix
-                            update_board(data.board);
-                        } 
-                        else if (data.type === 'stone_update') {
-                            // Single stone update
-                            update_stone(data.row, data.col, data.stone);
+                        // add top row of letters A to O
+                        for (let j = 0; j < BOARD_SIZE; j++) {
+                            const letter = document.createElement("div");
+                            letter.className = "letter";
+                            letter.textContent = String.fromCharCode(65 + j);
+                            board.appendChild(letter);
                         }
-                        else {
-                            console.warn('Received unknown message type:', data);
-                        }
-                    } catch (e) {
-                        console.error('Error parsing received data:', e);
                     }
-                };
-            }
-            
-            // Update a single stone on the board
-            function update_stone(row, col, value) {
-                const stone = document.getElementById(`stone-${row}-${col}`);
-                if (stone) {
-                    // Check the value to determine what to display
-                    if (value === 'B' || value === 1) {
-                        stone.className = 'stone black-stone';
-                        stone.textContent = 'B';
-                        stone.style.display = 'block';
-                    } else if (value === 'W' || value === 2) {
-                        stone.className = 'stone white-stone';
-                        stone.textContent = 'W';
-                        stone.style.display = 'block';
-                    } else {
-                        // Empty intersection
-                        stone.style.display = 'none';
+
+                    if (i % BOARD_SIZE == 0) {
+                        // add legend corresponding to numbers 1 to 15
+                        const number = document.createElement("div");
+                        number.className = "number";
+                        number.textContent = BOARD_SIZE - Math.floor(i / BOARD_SIZE);
+                        board.appendChild(number);
                     }
+
+                    // add cell
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    if (i % BOARD_SIZE == 14) cell.classList.add("right");
+                    if (i >= BOARD_SIZE * (BOARD_SIZE - 1)) cell.classList.add("bottom");
+                    if ( // place circles 3 spaces from the edges
+                        i == (BOARD_SIZE * BOARD_SIZE - 1) / 2 ||
+                        (i % BOARD_SIZE == 3 || i % BOARD_SIZE == BOARD_SIZE - 4) &&
+                        (Math.floor(i / BOARD_SIZE) == 3 || Math.floor(i / BOARD_SIZE) == BOARD_SIZE - 4)
+                    ) {
+                        // add circle div
+                        const circle = document.createElement("div");
+                        circle.className = "circle";
+                        cell.appendChild(circle);
+                    }
+                    board.appendChild(cell);
                 }
+            });
+        }
+
+        function setStone(x, y, color, board) {
+            // select all cells with class "cell" in board
+            const cells = board.getElementsByClassName("cell");
+            // calculate index in cells array
+            const index = BOARD_SIZE * (BOARD_SIZE - y - 1) + x;
+            // check if index is valid
+            if (index < 0 || index >= cells.length) {
+                console.error("Invalid index:", index);
+                return;
             }
-            
-            // Initialize the board and connect to WebSocket
-            init_board();
-            connect();
-        });
+            // set class based on color
+            switch (color.toLowerCase()) {
+                case "black":
+                case "b":
+                    cells[index].classList.add("black-stone");
+                    break;
+                case "white":
+                case "w":
+                    cells[index].classList.add("white-stone");
+                    break;
+                default:
+                    cells[index].classList.remove("black-stone", "white-stone");
+            }
+        }
+
+        function connect() {
+            // Establish WebSocket connection
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/live`;
+            let socket = new WebSocket(wsUrl);
+            window.addEventListener("beforeunload", () => {
+                if (socket && socket.readyState === WebSocket.OPEN) socket.close();
+            });
+
+            socket.onopen = () => {
+                Array.from(document.getElementsByClassName("connection-status")).forEach(status => {
+                    status.classList.remove("disconnected");
+                    status.classList.add("connected");
+                    status.textContent = "Connected";
+                });
+            };
+            socket.onclose = () => {
+                Array.from(document.getElementsByClassName("connection-status")).forEach(status => {
+                    status.classList.remove("connected");
+                    status.classList.add("disconnected");
+                    status.textContent = "Disconnected. Reconnecting...";
+                });
+                setTimeout(connect, 200); // Try to reconnect after 200ms
+            };
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'full_board') { // Initial full board state
+                        Array.from(document.getElementsByClassName("board")).forEach(board => {
+                            data.board.forEach(stone => {
+                                setStone(stone.x, stone.y, stone.color, board);
+                            });
+                        });
+                    }
+                    else if (data.type === 'stone_update') { // Update for a single stone
+                        Array.from(document.getElementsByClassName("board")).forEach(board => {
+                            setStone(data.col, data.row, data.stone, board);
+                        });
+                    }
+                    else {
+                        console.warn('Received unknown message type:', data);
+                    }
+                } catch (e) {
+                    console.error('Error parsing received data:', e);
+                }
+            };
+        }
+
     </script>
+
 </body>
 </html>

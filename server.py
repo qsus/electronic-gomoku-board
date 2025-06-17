@@ -11,12 +11,13 @@ class Server:
 		self.app = Microdot()
 		self.websockets = set()
 		
-		self.app.route('/')(self.index_handler)
-		self.app.route('/ws')(with_websocket(self.ws_handler))
-		self.app.route('/config')(self.config_handler)
-		self.app.route('/config.py', methods=['GET'])(self.get_settings_handler)
-		self.app.route('/config.py', methods=['POST'])(self.post_settings_handler)
+		self.app.route('/live')(with_websocket(self.ws_handler))
+		self.app.route('/config', methods=['GET'])(self.get_settings_handler)
+		self.app.route('/configDefault', methods=['GET'])(self.get_default_settings_handler)
+		self.app.route('/config', methods=['POST'])(self.post_settings_handler)
 		self.app.route('/reset')(lambda request: soft_reset())
+		self.app.route('/')(self.index_handler)
+		self.app.route('/<path:path>')(self.static_handler)
 		
 
 	async def start(self):
@@ -24,11 +25,32 @@ class Server:
 
 	async def index_handler(self, request: Request):
 		return send_file('static/index.html', content_type='text/html')
-	
-	async def config_handler(self, request: Request):
-		return send_file('static/config.html', content_type='text/html')
+
+	async def static_handler(self, request: Request, path: str):
+		# get content type
+		if path.endswith('.html'):
+			content_type = 'text/html'
+		elif path.endswith('.js'):
+			content_type = 'application/javascript'
+		elif path.endswith('.css'):
+			content_type = 'text/css'
+		elif path.endswith('.png'):
+			content_type = 'image/png'
+		else:
+			content_type = 'text/plain'
+		# check if file exists
+		try:
+			with open(f'static/{path}', 'rb') as f:
+				pass
+		except OSError:
+			return "File not found", 404
+		# send file
+		return send_file(f'static/{path}', content_type=content_type)
 	
 	async def get_settings_handler(self, request: Request):
+		return send_file('config.py', content_type='text/plain')
+	
+	async def get_default_settings_handler(self, request: Request):
 		return send_file('config.py', content_type='text/plain')
 	
 	async def post_settings_handler(self, request: Request):
