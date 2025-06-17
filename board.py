@@ -49,7 +49,7 @@ class Board:
 		self.sm_mux_j.active(1)
 	
 	@micropython.native
-	def update_matrix(self):
+	def update_matrix(self, calibrate=False):
 		"""Read the current values from the board and update the number_matrix."""
 		# Time to run the whole function in ms:
 		# without assembly: 19 or 27 if called from function
@@ -64,7 +64,10 @@ class Board:
 				self.sm_mux_j.get()  # 30 us both commands
 				
 				# Read the value from the ADC and correct it with the calibration matrix
-				self.number_matrix[i][j] = self.O.read_u16() - self.calibration_matrix[i][j] # 30 us
+				if calibrate:
+					self.calibration_matrix[i][j] = self.O.read_u16()
+				else:
+					self.number_matrix[i][j] = self.O.read_u16() - self.calibration_matrix[i][j] # 30 us
 
 				# Calculate the stone type based on corrected values
 				previous_stone = self.stone_matrix[i][j]
