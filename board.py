@@ -121,7 +121,7 @@ class Board:
 			while self.changed_stones:
 				i, j, previous_stone, new_stone = self.changed_stones.pop(0)
 				for observer in self.stone_observers:
-					observer(i, j, previous_stone, new_stone)
+					await observer(i, j, previous_stone, new_stone)
 
 			#print("update_matrix", e2 - e1)
 			await asyncio.sleep_ms(interval_ms)

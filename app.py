@@ -2,12 +2,11 @@ import asyncio
 from board import Board
 import json
 from server import Server
-from secret import SSID, PASSWORD, AP_SSID, AP_PASSWORD
 from display import Display
 from wifi import WifiConnection
 from clock import Clock
 from button import Button
-from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN
+from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN, SSID, PASSWORD, AP_SSID, AP_PASSWORD
 import gc
 import time
 
@@ -98,11 +97,11 @@ class App:
 
 
         @self.board.stone_update
-        def stone_update(i, j, previous_stone, new_stone):
-            asyncio.create_task(self.server.send_to_all(json.dumps({
+        async def stone_update(i, j, previous_stone, new_stone):
+            await self.server.send_to_all(json.dumps({
                 'type': 'stone_update',
                 'row': i, 'col': j, 'stone': new_stone
-            })))
+            }))
 
     def _left_button_press(self):
         if self.mode == self.MODE_MENU:
