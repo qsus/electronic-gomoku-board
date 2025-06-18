@@ -4,15 +4,15 @@ import json
 from server import Server
 from display import Display
 from wifi import WifiConnection
-from clock import Clock
 from button import Button
-from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN, SSID, PASSWORD, AP_SSID, AP_PASSWORD, D_TIMINGS
+from config import LEFT_BUTTON_PIN, MAIN_BUTTON_PIN, RIGHT_BUTTON_PIN, SSID, AP_SSID, AP_PASSWORD, D_TIMINGS
 import gc
 import time
+from game import Game
 
 class App:
     MODE_MENU = 0
-    MODE_CLOCK = 1
+    MODE_GAME = 1
 
     def __init__(self):
         self.board = Board()
@@ -20,11 +20,11 @@ class App:
         self.wifi_connection = WifiConnection()
         self.display = Display()
         self.server = Server(self.board)
-        self.clock = Clock()
         self.button_left = Button(LEFT_BUTTON_PIN, self._left_button_press)
         self.button_main = Button(MAIN_BUTTON_PIN, self._main_button_press)
         self.button_right = Button(RIGHT_BUTTON_PIN, self._right_button_press)
         self.mode = self.MODE_MENU
+        self.game = Game(self.display, self.board)
         
         if D_TIMINGS:
             self.last_loop_start = 0
@@ -37,31 +37,6 @@ class App:
                     print(time.ticks_diff(now, last), end='l ')
                     await asyncio.sleep(0)
             asyncio.create_task(loop_measure())
-
-        @self.clock.add_observer
-        def clock_update(clock: Clock):
-            """Observer method to update the display with the clock message."""
-            message  = f"{clock.time_left[0] // 3600000}:{(clock.time_left[0] // 60000) % 60:02}:{(clock.time_left[0] // 1000) % 60:02}"
-            # H:MM:SS
-            
-            if clock.win == clock.PLAYER_1:
-                statusSignal = "WL"
-            elif clock.win == clock.PLAYER_2:
-                statusSignal = "LW"
-            else:
-                statusSignal = "  "
-
-            if clock.running and clock.turn == clock.PLAYER_1:
-                statusSignal = '*' + statusSignal[1]
-            elif clock.running and clock.turn == clock.PLAYER_2:
-                statusSignal = statusSignal[0] + '*'
-            # WL, LW, or "  ", overlayed with * if running
-
-            message += statusSignal
-            message += f"{clock.time_left[1] // 3600000}:{(clock.time_left[1] // 60000) % 60:02}:{(clock.time_left[1] // 1000) % 60:02}"
-            # H:MM:SS  H:MM:SS (with status signal in the middle)
-
-            self.display.show_splash("Game in progress", message)
         
         @self.display.add_menu_item("Welcome to ECB!")
         def print_debug():
@@ -72,11 +47,10 @@ class App:
             total = free + allocated
             print(f"Memory: {allocated}/{total} ({allocated / total * 100}%) allocated, {free} free")
 
-        @self.display.add_menu_item("Start game")
-        def start_game():
-            self.mode = self.MODE_CLOCK
-            self.clock.init_clock()
-            self.clock.toggle_running()
+        @self.display.add_menu_item("Enter game")
+        def enter_game():
+            self.mode = self.MODE_GAME
+            self.game.drawLcd()
 
         @self.display.add_menu_item("Connect to WiFi")
         def set_client_mode():
@@ -105,20 +79,20 @@ class App:
     def _left_button_press(self):
         if self.mode == self.MODE_MENU:
             self.display.menu_left()
-        elif self.mode == self.MODE_CLOCK:
-            self.clock.button1()
+        elif self.mode == self.MODE_GAME:
+            self.game.button1()
 
     def _main_button_press(self):
         if self.mode == self.MODE_MENU:
             self.display.menu_select()
-        elif self.mode == self.MODE_CLOCK:
-            self.clock.toggle_running()
+        elif self.mode == self.MODE_GAME:
+            self.game.pauseUnpause()
 
     def _right_button_press(self):
         if self.mode == self.MODE_MENU:
             self.display.menu_right()
-        elif self.mode == self.MODE_CLOCK:
-            self.clock.button2()
+        elif self.mode == self.MODE_GAME:
+            self.game.button2()
 
     async def main(self):
         # Create tasks to run concurrently

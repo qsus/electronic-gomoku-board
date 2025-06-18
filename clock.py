@@ -42,6 +42,10 @@ class Clock:
 			await asyncio.sleep(sleep_time)
 
 	def _apply_elapsed(self):
+		"""Remove elapsed time from the current player's clock. Can be safely called at any time. Must be called before player switch and should be called periodically."""
+		if not self.running:
+			return
+
 		now = time.ticks_ms()
 		elapsed = time.ticks_diff(now, self.last_switch_time)
 		self.last_switch_time = now
@@ -53,23 +57,23 @@ class Clock:
 			self.running = False
 			
 		self.send_update()
+	
+	def pause(self):
+		self._apply_elapsed()
+		self.running = False
+		self.send_update()
 
-			
-
-	def toggle_running(self): # or paused
-		if self.running:
-			self.running = False
-		else:
-			self.running = True
-			self.last_switch_time = time.ticks_ms()
+	def unpause(self):
+		self.running = True
+		self.last_switch_time = time.ticks_ms()
 		self.send_update()
 
 	def button1(self):
-		if self.running:
-			self._apply_elapsed()
+		self._apply_elapsed()
 		self.turn = 1
+		self.send_update()
 
 	def button2(self):
-		if self.running:
-			self._apply_elapsed()
+		self._apply_elapsed()
 		self.turn = 0
+		self.send_update()
